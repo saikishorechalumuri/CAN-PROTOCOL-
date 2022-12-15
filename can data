@@ -1,0 +1,43 @@
+CANopen Startup Sequence – General Devices
+This document describes the startup sequence for general CANopen sensors. It is intended to demonstrate the required steps to start a CANopen sensor, as a reference for Mathworks to know which steps the system will need to follow to emulate a CAN sensor.
+For reference, you may view the Baumer GIM140r CANopen sensor to see the documentation from a supplier of CANopen devices.
+ 
+Figure: CANopen State Machine
+Parameters
+Property	Description	Example Value
+Node_ID	Node ID for CANopen sensor node
+Can be any value from 1 to 127	0x02
+Initialization
+1.	On power up, the sensor will attempt to transition from INITIALIZATION to PRE-OPERATIONAL mode by itself. If successful, the sensor will send a single CAN message (the boot up message):
+Sender	Sensor
+Description	Heartbeat (BOOT UP)
+Message ID	0x700 + Node_ID
+Data length	1
+Data	0x00
+
+2.	In PRE-OPERATIONAL mode, the sensor emits a heartbeat message regularly. This message includes the node ID and state the device is waiting in.
+Sender	Sensor
+Description	Heartbeat (PRE-OPERATIONAL)
+Message ID	0x700 + Node_ID
+Data length	1
+Data	0x7F
+Repeat every 	Varies by sensor (typically 25ms minimum)
+3.	The master node (ECU) sends a CAN message to move the sensor from PRE-OPERATIONAL mode to OPERATIONAL mode. The second byte of the message specifies the targeted device. Individual devices can be targeted by using their specific node ID. Alternatively, if 0x00 is used for the second byte, all connected devices on the network are commanded to transition to OPERATIONAL mode.
+Sender	ECU
+Description	Command sensor to start
+Message ID	0x000
+Data length	2
+Data	[0x01 Node_ID] to command specific device
+[0x01 0x00] to command all devices on network
+
+4.	The sensor moves to OPERATIONAL mode. It continues to send the heartbeat message, with a different data field. The device will now also regularly transmit process data objects (PDOs) that contain sensor readings, status information, etc. The message ID and data format for PDOs vary by device.
+Sender	Sensor	Sensor
+Description	Heartbeat (OPERATIONAL)	PDO – Message encoding sensor measurements
+Message ID	0x700 + Node_ID	Varies + Node_ID
+Example: 0x180 + Node_ID for GIM-140r sensor
+Data length	1	Varies
+Data	0x05	Varies
+Repeat Every	25 ms	Varies
+
+
+5.	The sensor stays in OPERATIONAL mode unless the master commands it to change modes. In the test bench we will likely never do this. We will get to OPERATIONAL mode and leave it there.
